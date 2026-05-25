@@ -25,24 +25,34 @@ class RecipeRepositoryImpl implements RecipeRepository {
   }
 
   @override
-  Stream<List<RecipeModel>> watchRecipes() {
+  Stream<List<RecipeModel>> watchRecipes(String userId) {
     return _firestore
         .collection(_collection)
-        .orderBy('createdAt', descending: true)
+        .where('userId', isEqualTo: userId)
         .snapshots()
-        .map(
-          (snap) =>
-              snap.docs.map(RecipeModel.fromFirestore).toList(growable: false),
-        );
+        .map((snap) {
+          final recipes = snap.docs
+              .map(RecipeModel.fromFirestore)
+              .toList(growable: false);
+
+          return recipes
+            ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+        });
   }
 
   @override
-  Future<List<RecipeModel>> getAllRecipes() async {
+  Future<List<RecipeModel>> getAllRecipes(String userId) async {
     final snap = await _firestore
         .collection(_collection)
-        .orderBy('createdAt', descending: true)
+        .where('userId', isEqualTo: userId)
         .get();
-    return snap.docs.map(RecipeModel.fromFirestore).toList(growable: false);
+
+    final recipes = snap.docs
+        .map(RecipeModel.fromFirestore)
+        .toList(growable: false);
+
+    return recipes
+      ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
   }
 
   @override

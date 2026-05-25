@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class RecipeModel {
   const RecipeModel({
     this.id,
+    this.userId,
     required this.name,
     required this.category,
     required this.ingredients,
@@ -12,6 +13,7 @@ class RecipeModel {
   });
 
   final String? id;
+  final String? userId;
   final String name;
   final String category;
   final List<String> ingredients;
@@ -19,11 +21,14 @@ class RecipeModel {
   final int prepTimeMinutes;
   final DateTime createdAt;
 
-  factory RecipeModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory RecipeModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data() ?? <String, dynamic>{};
 
     return RecipeModel(
       id: doc.id,
+      userId: (data['userId'] as String?) ?? '',
       name: (data['name'] as String?) ?? '',
       category: (data['category'] as String?) ?? 'geral',
       ingredients: ((data['ingredients'] as List?) ?? const <dynamic>[])
@@ -38,6 +43,7 @@ class RecipeModel {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'userId': userId,
       'category': category,
       'ingredients': ingredients,
       'instructions': instructions,
@@ -48,6 +54,7 @@ class RecipeModel {
 
   RecipeModel copyWith({
     String? id,
+    String? userId,
     String? name,
     String? category,
     List<String>? ingredients,
@@ -57,6 +64,7 @@ class RecipeModel {
   }) {
     return RecipeModel(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       name: name ?? this.name,
       category: category ?? this.category,
       ingredients: ingredients ?? this.ingredients,
@@ -68,6 +76,7 @@ class RecipeModel {
 
   static RecipeModel sample() {
     return RecipeModel(
+      userId: '',
       name: 'Spaghetti Al Pomodoro',
       category: 'italiana',
       ingredients: const <String>[

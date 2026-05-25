@@ -1,23 +1,33 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_recipes/features/recipes/data/models/recipe_model.dart';
 import 'package:flutter_recipes/features/recipes/domain/repositories/recipe_repository.dart';
 
 class RecipesPage extends StatelessWidget {
-  const RecipesPage({super.key, required this.recipeRepository});
+  const RecipesPage({
+    super.key,
+    required this.recipeRepository,
+    required this.userId,
+    this.onLogout,
+  });
 
   final RecipeRepository recipeRepository;
+  final String userId;
+  final Future<void> Function()? onLogout;
 
   Future<void> _saveRecipe(
     ScaffoldMessengerState messenger,
     RecipeModel recipe,
   ) async {
     try {
+      final scopedRecipe = recipe.copyWith(userId: userId);
+
       if (recipe.id == null) {
-        await recipeRepository.addRecipe(recipe);
+        await recipeRepository.addRecipe(scopedRecipe);
       } else {
-        await recipeRepository.updateRecipe(recipe);
+        await recipeRepository.updateRecipe(scopedRecipe);
       }
       messenger.showSnackBar(
         const SnackBar(content: Text('Receita salva com sucesso.')),
@@ -69,6 +79,56 @@ class RecipesPage extends StatelessWidget {
 
     if (shouldDelete == true) {
       await _deleteRecipe(messenger, recipe);
+    }
+  }
+
+  String _buildShareMessage(RecipeModel recipe) {
+    final ingredientLines = recipe.ingredients
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .map((item) => '- $item')
+        .join('\n');
+
+    final instructionLines = recipe.instructions
+        .split('\n')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+
+    final instructionsText = instructionLines
+        .asMap()
+        .entries
+        .map((entry) => '${entry.key + 1}. ${entry.value}')
+        .join('\n');
+
+    return [
+      '🍽️ ${recipe.name}',
+      'Categoria: ${recipe.category}',
+      'Tempo de preparo: ${recipe.prepTimeMinutes} min',
+      '',
+      'Ingredientes:',
+      ingredientLines,
+      '',
+      'Modo de preparo:',
+      instructionsText,
+    ].join('\n');
+  }
+
+  Future<void> _shareRecipe(
+    ScaffoldMessengerState messenger,
+    RecipeModel recipe,
+  ) async {
+    try {
+      await Share.share(
+        _buildShareMessage(recipe),
+        subject: 'Receita: ${recipe.name}',
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Nao foi possivel compartilhar a receita.'),
+        ),
+      );
     }
   }
 
@@ -483,10 +543,20 @@ class RecipesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stream = recipeRepository.watchRecipes();
+    final stream = recipeRepository.watchRecipes(userId);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Receitas')),
+      appBar: AppBar(
+        title: const Text('Receitas'),
+        actions: [
+          if (onLogout != null)
+            IconButton(
+              onPressed: onLogout,
+              tooltip: 'Sair',
+              icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openRecipeForm(context),
         icon: const Icon(Icons.add),
@@ -507,7 +577,7 @@ class RecipesPage extends StatelessWidget {
           if (recipes.isEmpty) {
             return const Center(
               child: Text(
-                'Nenhuma receita ainda. Clique para criar um exemplo.',
+                'Nenhuma receita desta conta ainda. Clique para criar uma.',
               ),
             );
           }
@@ -519,6 +589,7 @@ class RecipesPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final recipe = recipes[index];
               final ingredientCount = recipe.ingredients.length;
+              final messenger = ScaffoldMessenger.of(context);
 
               return Card(
                 elevation: 0,
@@ -553,6 +624,9 @@ class RecipesPage extends StatelessWidget {
                               tooltip: 'Ações da receita',
                               onSelected: (value) {
                                 switch (value) {
+                                  case 'share':
+                                    _shareRecipe(messenger, recipe);
+                                    break;
                                   case 'edit':
                                     _openRecipeForm(context, recipe: recipe);
                                     break;
@@ -562,6 +636,10 @@ class RecipesPage extends StatelessWidget {
                                 }
                               },
                               itemBuilder: (context) => const [
+                                PopupMenuItem(
+                                  value: 'share',
+                                  child: Text('Compartilhar'),
+                                ),
                                 PopupMenuItem(
                                   value: 'edit',
                                   child: Text('Editar'),
