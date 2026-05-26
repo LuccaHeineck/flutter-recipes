@@ -154,6 +154,7 @@ class _AuthPageState extends State<AuthPage> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 18),
+                      // altera entre login e cadastro
                       SegmentedButton<bool>(
                         showSelectedIcon: false,
                         segments: const [

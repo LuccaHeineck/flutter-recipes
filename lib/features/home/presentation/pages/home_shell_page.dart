@@ -41,6 +41,7 @@ class _HomeShellPageState extends State<HomeShellPage> {
     ];
 
     return Scaffold(
+      // empilha as telas
       body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
